@@ -8,6 +8,8 @@ import tensorflow as tf
 import numpy as np
 from policy_net import Policy_net
 from ppo import PPOTrain
+import time
+from file_writer import open_file_and_save
 
 FLAGS = flags.FLAGS
 FLAGS(sys.argv)
@@ -35,9 +37,9 @@ with tf.Session() as sess:
     Policy = Policy_net('policy')
     Old_Policy = Policy_net('old_policy')
     PPO = PPOTrain(Policy, Old_Policy, gamma = 0.95)
-    #sess.run(tf.global_variables_initializer())
+    sess.run(tf.global_variables_initializer())
     saver = tf.train.Saver()
-    saver.restore(sess, "4wayBeacon/tmp/model.ckpt")
+    #saver.restore(sess, "4wayBeacon/tmp/model.ckpt")
 
     for episodes in range(1000000):
         observations = []
@@ -114,6 +116,8 @@ with tf.Session() as sess:
 
                 #saver.save(sess, "4wayBeacon/tmp/model.ckpt")
                 print(sum(rewards), episodes)
+                open_file_and_save('4wayBeacon/reward.csv', [sum(rewards)])
+                
             
             state = next_state
 

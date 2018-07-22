@@ -46,10 +46,7 @@ class PPOTrain:
 
         with tf.variable_scope('loss/clip'):
             # ratios = tf.divide(act_probs, act_probs_old)
-            print(act_probs)
-            print(tf.log(act_probs))
             ratios = tf.exp(tf.log(act_probs) - tf.log(act_probs_old))
-            print(ratios)
             clipped_ratios = tf.clip_by_value(ratios, clip_value_min=1 - clip_value, clip_value_max=1 + clip_value)
             loss_clip = tf.minimum(tf.multiply(self.gaes, ratios), tf.multiply(self.gaes, clipped_ratios))
             loss_clip = tf.reduce_mean(loss_clip)

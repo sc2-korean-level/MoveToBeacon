@@ -39,6 +39,7 @@ class PPOTrain:
             
             action_policy = action_policy_probs * tf.one_hot(indices=self.actions, depth=action_policy_probs.shape[1])
             spatial_policy = spatial_policy_probs * tf.one_hot(indices=self.position, depth=spatial_policy_probs.shape[1])
+            
             act_probs_action = tf.reduce_sum(action_policy, axis=1)
             act_probs_spatial = tf.reduce_sum(spatial_policy, axis=1)
             act_probs = act_probs_action * act_probs_spatial
@@ -51,8 +52,6 @@ class PPOTrain:
             act_probs_action_old = tf.reduce_sum(action_policy_probs_old, axis=1)
             act_probs_spatial_old = tf.reduce_sum(spatial_policy_probs_old)
             act_probs_old = act_probs_action_old * act_probs_spatial_old
-            
-
 
             with tf.variable_scope('loss/clip'):
                 # ratios = tf.divide(act_probs, act_probs_old)
@@ -84,6 +83,24 @@ class PPOTrain:
             self.merged = tf.summary.merge_all()
             optimizer = tf.train.AdamOptimizer(learning_rate=1e-4, epsilon=1e-5)
             self.train_op = optimizer.minimize(loss, var_list=pi_trainable)
+
+    def check(self, obs, actions, spatial, rewards, v_preds_next, gaes):
+        print(actions, spatial, rewards, v_preds_next, gaes)
+        result = [self.action_policy_probs,
+            self.action_policy,
+            self.act_probs_action,
+            self.spatial_policy_probs,
+            self.spatial_policy,
+            self.act_probs_spatial,
+            self.act_probs]
+        a = tf.get_default_session().run(result, feed_dict={self.Policy.obs: obs,
+                                                                self.Old_Policy.obs: obs,
+                                                                self.actions: actions,
+                                                                self.position: spatial,
+                                                                self.rewards: rewards,
+                                                                self.v_preds_next: v_preds_next,
+                                                                self.gaes: gaes})
+        print(a)
 
     def train(self, obs, actions, spatial, rewards, v_preds_next, gaes):
         tf.get_default_session().run([self.train_op], feed_dict={self.Policy.obs: obs,

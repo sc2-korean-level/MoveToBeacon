@@ -8,6 +8,7 @@ import tensorflow as tf
 import numpy as np
 from policy_net import Policy_net
 from ppo import PPOTrain
+from file_writer import open_file_and_save
 
 FLAGS = flags.FLAGS
 FLAGS(sys.argv)
@@ -30,7 +31,7 @@ env = sc2_env.SC2Env(map_name='MoveToBeacon',
                     step_mul=4,
                     game_steps_per_episode=None,
                     disable_fog=False,
-                    visualize=False)
+                    visualize=True)
 with tf.Session() as sess:
     Policy = Policy_net('policy')
     Old_Policy = Policy_net('old_policy')
@@ -39,7 +40,7 @@ with tf.Session() as sess:
     saver = tf.train.Saver()
     saver.restore(sess, "PositionBeacon/tmp/model.ckpt")
 
-    for episodes in range(3):
+    for episodes in range(100000):
         observations = []
         actions_list = []
         spatial_position = []
@@ -72,7 +73,7 @@ with tf.Session() as sess:
             action = np.random.choice(3, p=z/sum(z))           # sampling action
             x, y = int(spatial_policy % 16), int(spatial_policy//16)    # get x, y
             
-            if action == 0: actions_ = actions.FunctionCall(_MOVE_SCREEN, [_NOT_QUEUED, [x, y]])
+            if action == 0: actions_ = actions.FunctionCall(_MOVE_SCREEN, [_QUEUED, [x, y]])
             if action == 1: actions_ = actions.FunctionCall(actions.FUNCTIONS.select_army.id, [_SELECT_ALL])
             if action == 2: actions_ = actions.FunctionCall(actions.FUNCTIONS.no_op.id, [])
 
@@ -83,9 +84,10 @@ with tf.Session() as sess:
             beacon_map = (obs[0].observation.feature_screen.base[5] == 3)
             next_state = np.dstack([marine_map, beacon_map]).reshape(16*16*2).astype(int)
             reward = obs[0].reward
+            #if reward == 0:
+            #    reward = -0.1
             done = obs[0].step_type == environment.StepType.LAST
             
-            #print(state, action, spatial_policy, v_pred, reward)
             observations.append(state)
             actions_list.append(action)
             spatial_position.append(spatial_policy)
@@ -115,6 +117,19 @@ with tf.Session() as sess:
                                 v_preds_next=sampled_inp[4],
                                 gaes=sampled_inp[5])
                 
+                """
+                for epoch in range(1):
+                    sample_indices = np.random.randint(low=0, high=observations.shape[0], size=1)  # indices are in [low, high)
+                    sampled_inp = [np.take(a=a, indices=sample_indices, axis=0) for a in inp]
+                    
+                    PPO.check(obs=sampled_inp[0],
+                                actions=sampled_inp[1],
+                                spatial=sampled_inp[2],
+                                rewards=sampled_inp[3],
+                                v_preds_next=sampled_inp[4],
+                                gaes=sampled_inp[5])
+                """
+                open_file_and_save('PositionBeacon/reward.csv', [sum(rewards)])
                 saver.save(sess, "PositionBeacon/tmp/model.ckpt")
                 print(episodes, sum(rewards))
             
