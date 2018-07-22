@@ -32,14 +32,14 @@ env = sc2_env.SC2Env(map_name='MoveToBeacon',
                     step_mul=4,
                     game_steps_per_episode=None,
                     disable_fog=False,
-                    visualize=False)
+                    visualize=True)
 with tf.Session() as sess:
     Policy = Policy_net('policy')
     Old_Policy = Policy_net('old_policy')
     PPO = PPOTrain(Policy, Old_Policy, gamma = 0.95)
-    sess.run(tf.global_variables_initializer())
+    #sess.run(tf.global_variables_initializer())
     saver = tf.train.Saver()
-    #saver.restore(sess, "4wayBeacon/tmp/model.ckpt")
+    saver.restore(sess, "4wayBeacon/tmp/model.ckpt")
 
     for episodes in range(1000000):
         observations = []
@@ -114,9 +114,9 @@ with tf.Session() as sess:
                             v_preds_next=sampled_inp[3],
                             gaes=sampled_inp[4])
 
-                #saver.save(sess, "4wayBeacon/tmp/model.ckpt")
+                saver.save(sess, "4wayBeacon/tmp/model.ckpt")
                 print(sum(rewards), episodes)
-                open_file_and_save('4wayBeacon/reward.csv', [sum(rewards)])
+                #open_file_and_save('4wayBeacon/reward.csv', [sum(rewards)])
                 
             
             state = next_state
