@@ -105,6 +105,7 @@ with tf.Session() as sess:
                 
                 PPO.assign_policy_parameters()
                 inp = [observations, actions_list, rewards, v_preds_next, gaes]
+                print(gaes)
                 for epoch in range(4):
                     sample_indices = np.random.randint(low=0, high=observations.shape[0], size=64)  # indices are in [low, high)
                     sampled_inp = [np.take(a=a, indices=sample_indices, axis=0) for a in inp]  # sample training data
@@ -114,9 +115,9 @@ with tf.Session() as sess:
                             v_preds_next=sampled_inp[3],
                             gaes=sampled_inp[4])
 
-                saver.save(sess, "4wayBeacon_ppo/tmp/model.ckpt")
-                print(sum(rewards), episodes)
-                open_file_and_save('4wayBeacon_ppo/reward.csv', [sum(rewards)])
+                #saver.save(sess, "4wayBeacon_ppo/tmp/model.ckpt")
+                #print(sum(rewards), episodes)
+                #open_file_and_save('4wayBeacon_ppo/reward.csv', [sum(rewards)])
                 
             
             state = next_state

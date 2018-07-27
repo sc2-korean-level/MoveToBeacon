@@ -6,8 +6,9 @@ import matplotlib.pyplot as plt
 import random
 import tensorflow as tf
 import numpy as np
+from policy_net import Policy_net
+from ppo import PPOTrain
 from file_writer import open_file_and_save
-from a2c import a2c, disconut_rewards
 
 FLAGS = flags.FLAGS
 FLAGS(sys.argv)
@@ -30,20 +31,22 @@ env = sc2_env.SC2Env(map_name='MoveToBeacon',
                     step_mul=4,
                     game_steps_per_episode=None,
                     disable_fog=False,
-                    visualize=False)
+                    visualize=True)
 with tf.Session() as sess:
-    A2C = a2c(sess, 0.00001)
-    sess.run(tf.global_variables_initializer())
+    Policy = Policy_net('policy')
+    Old_Policy = Policy_net('old_policy')
+    PPO = PPOTrain(Policy, Old_Policy)
+    #sess.run(tf.global_variables_initializer())
     saver = tf.train.Saver()
-    #saver.restore(sess, "PositionBeacon/tmp/model.ckpt")
+    saver.restore(sess, "PositionBeacon/tmp/model.ckpt")
 
     for episodes in range(100000):
-        states = np.empty(shape=[0, 16*16*2])
-        actions_list = np.empty(shape=[0, 3])
-        spatial_list = np.empty(shape=[0, 16*16])
-        next_states = np.empty(shape=[0, 16*16*2])
-        rewards = np.empty(shape=[0, 1])
-
+        observations = []
+        actions_list = []
+        v_preds = []
+        spatial = []
+        rewards = []
+        
         obs = env.reset()
 
         done = False
@@ -55,8 +58,11 @@ with tf.Session() as sess:
 
         while not done:
             global_step += 1
-            action_policy, spatial_policy = A2C.choose_action(state)
 
+            action_policy, spatial_policy, v_pred = Policy.act(obs=state)
+            action_policy, spatial_policy = np.clip(action_policy, 1e-10, 1.0), np.clip(spatial_policy, 1e-10, 1.0)
+            #if global_step == 1: print(action_policy, spatial_policy, v_pred)
+            #print(action_policy, spatial_policy, v_pred)
             available_action = obs[0].observation.available_actions
             y, z, k = np.zeros(3), np.zeros(3), 0
             if 331 in available_action: y[0] = 1        # move screen
@@ -66,7 +72,7 @@ with tf.Session() as sess:
                 z[k] = i*j
                 k += 1
 
-            #print(z)
+            #print(z, available_action)
             #print(spatial_policy)
             action = np.random.choice(3, p=z/sum(z))           # sampling action
             position = np.random.choice(16*16, p=spatial_policy[0])
@@ -86,28 +92,36 @@ with tf.Session() as sess:
             reward = obs[0].reward
             done = obs[0].step_type == environment.StepType.LAST
 
-            one_hot_action = np.zeros(3)
-            one_hot_spatial = np.zeros(16*16)
-            one_hot_action[action] = 1
-            one_hot_spatial[position] = 1
-            
-            states = np.vstack([states, state])
-            next_states = np.vstack([next_states, next_state])
-            rewards = np.vstack([rewards, reward])
-            actions_list = np.vstack([actions_list, one_hot_action])
-            spatial_list = np.vstack([spatial_list, one_hot_spatial])
+            observations.append(state)
+            actions_list.append(action)
+            v_preds.append(np.asscalar(v_pred))
+            spatial.append(position)
+            rewards.append(reward)
 
             if done:
-                states = states.astype(float)
-                next_states = next_states.astype(float)
-                rewards = rewards.astype(float)
-                actions_list = actions_list.astype(float)
-                spatial_list = spatial_list.astype(float)
-                discounted_rewards = disconut_rewards(rewards)
-                A2C.learn(states, next_states, discounted_rewards, actions_list, spatial_list)
-                saver.save(sess, "PositionBeacon/tmp/model.ckpt")
-                print(episodes, sum(rewards))
-                open_file_and_save('PositionBeacon/reward.csv', [sum(rewards)])
+                v_preds_next = v_preds[1:] + [0]
+                gaes = PPO.get_gaes(rewards, v_preds, v_preds_next)
+                observations = np.reshape(observations, [-1, 16*16*2])
+                actions_list = np.array(actions_list).astype(dtype=np.int32)
+                spatial = np.array(spatial).astype(dtype=np.int32)
+                rewards = np.array(rewards).astype(dtype=np.float32)
+                v_preds_next = np.array(v_preds_next).astype(dtype=np.float32)
+                gaes = np.array(gaes).astype(dtype=np.float32)
+                
+                PPO.assign_policy_parameters()
+                inp = [observations, actions_list, spatial, rewards, v_preds_next, gaes]
+                for epoch in range(10):
+                    sample_indices = np.random.randint(low=0, high=observations.shape[0], size=64)  # indices are in [low, high)
+                    sampled_inp = [np.take(a=a, indices=sample_indices, axis=0) for a in inp]  # sample training data
+                    PPO.train(obs=sampled_inp[0],
+                            spatial=sampled_inp[2],
+                            actions=sampled_inp[1],
+                            rewards=sampled_inp[3],
+                            v_preds_next=sampled_inp[4],
+                            gaes=sampled_inp[5])
+                #saver.save(sess, "PositionBeacon/tmp/model.ckpt")
+                #print(episodes, sum(rewards))
+                #open_file_and_save('PositionBeacon/reward.csv', [sum(rewards)])
 
             state = next_state
 
