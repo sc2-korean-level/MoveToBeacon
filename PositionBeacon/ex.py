@@ -60,8 +60,8 @@ with tf.Session() as sess:
             global_step += 1
 
             action_policy, spatial_policy, v_pred = Policy.act(obs=state)
+            if global_step == 1: print(action_policy, spatial_policy, v_pred)
             action_policy, spatial_policy = np.clip(action_policy, 1e-10, 1.0), np.clip(spatial_policy, 1e-10, 1.0)
-            #if global_step == 1: print(action_policy, spatial_policy, v_pred)
             #print(action_policy, spatial_policy, v_pred)
             available_action = obs[0].observation.available_actions
             y, z, k = np.zeros(3), np.zeros(3), 0
@@ -119,9 +119,9 @@ with tf.Session() as sess:
                             rewards=sampled_inp[3],
                             v_preds_next=sampled_inp[4],
                             gaes=sampled_inp[5])
-                #saver.save(sess, "PositionBeacon/tmp/model.ckpt")
-                #print(episodes, sum(rewards))
-                #open_file_and_save('PositionBeacon/reward.csv', [sum(rewards)])
+                saver.save(sess, "PositionBeacon/tmp/model.ckpt")
+                print(episodes, sum(rewards))
+                open_file_and_save('PositionBeacon/reward.csv', [sum(rewards)])
 
             state = next_state
 

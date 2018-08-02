@@ -10,8 +10,10 @@ class Policy_net:
             reshape = tf.reshape(self.obs, [-1, 16, 16, 2])
             layer_1 = tf.layers.conv2d(inputs=reshape, filters=16, kernel_size=[5, 5], strides=[1, 1], padding='SAME', activation=tf.nn.relu)
             layer_2 = tf.layers.conv2d(inputs=layer_1, filters=32, kernel_size=[3, 3], strides=[1, 1], padding='SAME', activation=tf.nn.relu)
+            layer_2 = tf.layers.conv2d(inputs=layer_1, filters=64, kernel_size=[3, 3], strides=[1, 1], padding='SAME', activation=tf.nn.relu)
+            layer_2 = tf.layers.conv2d(inputs=layer_1, filters=128, kernel_size=[3, 3], strides=[1, 1], padding='SAME', activation=tf.nn.relu)
             with tf.variable_scope('policy_net'):
-                reshape_spatial = tf.reshape(layer_2, [-1, 16*16*32])
+                reshape_spatial = tf.reshape(layer_2, [-1, 16*16*128])
                 
                 dense_1 = tf.layers.dense(inputs=reshape_spatial, units=256, activation=tf.nn.relu)
                 self.act_probs = tf.layers.dense(inputs=dense_1, units=3, activation=tf.nn.softmax)

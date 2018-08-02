@@ -42,32 +42,26 @@ class PPOTrain:
         
         act_probs = act_probs * tf.one_hot(indices=self.actions, depth=act_probs.shape[1])
         act_probs = tf.reduce_sum(act_probs, axis=1)
-        act_probs = tf.clip_by_value(act_probs, 1e-10, 1.0)
 
         spatial_probs = spatial_probs * tf.one_hot(indices=self.space, depth=spatial_probs.shape[1])
         spatial_probs = tf.reduce_sum(spatial_probs, axis=1)
-        spatial_probs = tf.clip_by_value(spatial_probs, 1e-10, 1.0)
+        
+        action_probs = tf.clip_by_value(act_probs * spatial_probs, 1e-10, 1.0)
 
         act_probs_old = act_probs_old * tf.one_hot(indices=self.actions, depth=act_probs_old.shape[1])
         act_probs_old = tf.reduce_sum(act_probs_old, axis=1)
-        act_probs_old = tf.clip_by_value(act_probs_old, 1e-10, 1.0)
 
         spatial_probs_old = spatial_probs_old * tf.one_hot(indices=self.space, depth=spatial_probs_old.shape[1])
         spatial_probs_old = tf.reduce_sum(spatial_probs_old, axis=1)
-        spatial_probs_old = tf.clip_by_value(spatial_probs_old, 1e-10, 1.0)
 
-        with tf.variable_scope('loss_action/clip'):
-            action_ratios = tf.exp(tf.log(act_probs)-tf.log(act_probs_old))
-            clipped_action_ratios = tf.clip_by_value(action_ratios, clip_value_min=1-clip_value, clip_value_max=1+clip_value)
-            loss_action_clip = tf.minimum(tf.multiply(self.gaes, action_ratios), tf.multiply(self.gaes, clipped_action_ratios))
-            loss_action_clip = tf.reduce_mean(loss_action_clip)
-            tf.summary.scalar('loss_action', loss_action_clip)
+        action_probs_old = tf.clip_by_value(act_probs_old * spatial_probs_old, 1e-10, 1.0)
 
-        with tf.variable_scope('loss_spatial/clip'):
-            spatial_ratios = tf.exp(tf.log(spatial_probs)-tf.log(spatial_probs_old))
+
+        with tf.variable_scope('loss/clip'):
+            spatial_ratios = tf.exp(tf.log(action_probs)-tf.log(action_probs_old))
             clipped_spatial_ratios = tf.clip_by_value(spatial_ratios, clip_value_min=1-clip_value, clip_value_max=1+clip_value)
             loss_spatial_clip = tf.minimum(tf.multiply(self.gaes, spatial_ratios), tf.multiply(self.gaes, clipped_spatial_ratios))
-            loss_spatial_clip = tf.reduce_mean(loss_action_clip)
+            loss_spatial_clip = tf.reduce_mean(loss_spatial_clip)
             tf.summary.scalar('loss_spatial', loss_spatial_clip)
         
         with tf.variable_scope('loss/vf'):
@@ -89,7 +83,7 @@ class PPOTrain:
             tf.summary.scalar('entropy', entropy)
 
         with tf.variable_scope('loss'):
-            loss = loss_action_clip + loss_spatial_clip - c_1 * loss_vf + c_2 * entropy
+            loss = loss_spatial_clip - c_1 * loss_vf + c_2 * entropy
             loss = -loss  # minimize -loss == maximize loss
             tf.summary.scalar('loss', loss)
 
