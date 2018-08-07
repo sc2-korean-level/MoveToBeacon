@@ -9,6 +9,7 @@ import numpy as np
 from policy_net import Policy_net
 from ppo import PPOTrain
 from file_writer import open_file_and_save
+import cv2
 
 FLAGS = flags.FLAGS
 FLAGS(sys.argv)
@@ -20,7 +21,7 @@ _NOT_QUEUED  = [0]
 _QUEUED = [1]
 _SELECT_ALL  = [0]
 
-env = sc2_env.SC2Env(map_name='MoveToBeacon',
+env = sc2_env.SC2Env(map_name='CollectMineralShards',
                     agent_interface_format=sc2_env.parse_agent_interface_format(
                         feature_screen=16,
                         feature_minimap=16,
@@ -31,14 +32,14 @@ env = sc2_env.SC2Env(map_name='MoveToBeacon',
                     step_mul=4,
                     game_steps_per_episode=None,
                     disable_fog=False,
-                    visualize=True)
+                    visualize=False)
 with tf.Session() as sess:
     Policy = Policy_net('policy')
     Old_Policy = Policy_net('old_policy')
     PPO = PPOTrain(Policy, Old_Policy)
     #sess.run(tf.global_variables_initializer())
     saver = tf.train.Saver()
-    saver.restore(sess, "PositionBeacon/tmp/model.ckpt")
+    saver.restore(sess, "collectMineralShards/tmp/model.ckpt")
 
     for episodes in range(100000):
         observations = []
@@ -62,7 +63,6 @@ with tf.Session() as sess:
             action_policy, spatial_policy, v_pred = Policy.act(obs=state)
             #if global_step == 1: print(action_policy, spatial_policy, v_pred)
             action_policy, spatial_policy = np.clip(action_policy, 1e-10, 1.0), np.clip(spatial_policy, 1e-10, 1.0)
-            #print(action_policy, spatial_policy, v_pred)
             available_action = obs[0].observation.available_actions
             y, z, k = np.zeros(3), np.zeros(3), 0
             if 331 in available_action: y[0] = 1        # move screen
@@ -119,9 +119,9 @@ with tf.Session() as sess:
                             rewards=sampled_inp[3],
                             v_preds_next=sampled_inp[4],
                             gaes=sampled_inp[5])
-                saver.save(sess, "PositionBeacon/tmp/model.ckpt")
+                saver.save(sess, "collectMineralShards/tmp/model.ckpt")
                 print(episodes, sum(rewards))
-                open_file_and_save('PositionBeacon/reward.csv', [sum(rewards)])
+                open_file_and_save('collectMineralShards/reward.csv', [sum(rewards)])
 
             state = next_state
             
