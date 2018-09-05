@@ -1,15 +1,6 @@
 import tensorflow as tf
 import numpy as np
 
-def disconut_rewards(r):
-    discounted_r = np.zeros_like(r, dtype=np.float32)
-    running_add = 0
-    for i in reversed(range(len(r))):
-        running_add = running_add * 0.99 + r[i]
-        discounted_r[i] = running_add
-    discounted_r = (discounted_r - discounted_r.mean())/(discounted_r.std() + 1e-7)
-    return discounted_r
-
 class a2c:
     def __init__(self, sess, exp_rate):
         self.sess = sess
