@@ -94,8 +94,7 @@ with tf.Session() as sess:
             actions_list = np.vstack([actions_list, action])
 
             if done:
-                discounted_rewards = disconut_rewards(rewards)
-                A2C.learn(states, next_states, discounted_rewards, actions_list)
+                A2C.learn(states, next_states, rewards, actions_list)
 
                 saver.save(sess, "4wayBeacon_a2c/tmp/model.ckpt")
                 print(sum(rewards), episodes)
