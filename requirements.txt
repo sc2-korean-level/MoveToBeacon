@@ -31,7 +31,7 @@ scipy==1.1.0
 six==1.11.0
 sk-video==1.1.10
 tensorboard==1.9.0
-tensorflow-gpu==1.9.0
+tensorflow-gpu==2.5.1
 termcolor==1.1.0
 urllib3==1.23
 websocket-client==0.48.0
